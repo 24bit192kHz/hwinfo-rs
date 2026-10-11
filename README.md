@@ -60,6 +60,9 @@ modules in `kmod/` with DKMS. Optional runtime pieces: `smartmontools`, `dmideco
 
 On hybrid laptops, `HWINFO_RS_NO_NVIDIA=1` keeps it from waking a sleeping dGPU.
 
+ITE IT8686E/IT8688E boards whose BIOS hides AVCC3: see
+[`extra/it87-avcc3-dkms`](extra/it87-avcc3-dkms), a patched `it87` with `force_avcc3`.
+
 ## Safety
 
 Everything is a read except these two writes:

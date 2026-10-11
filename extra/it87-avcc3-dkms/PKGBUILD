@@ -1,0 +1,45 @@
+# it87-dkms-git (AUR, Daniel Hillenbrand) + the force_avcc3 parameter.
+# Drop-in replacement: provides/conflicts it87-dkms-git.
+_pkgbase=it87
+pkgname=it87-avcc3-dkms-git
+pkgver=358.bd7a566
+pkgrel=1
+pkgdesc="Linux driver for ITE LPC chips (frankcrawford/it87) with a force_avcc3 option"
+arch=('x86_64' 'i686')
+url="https://github.com/frankcrawford/it87"
+license=('GPL-2.0-or-later')
+depends=('dkms')
+makedepends=('git')
+provides=('it87' 'it87-dkms-git')
+conflicts=('it87-dkms-git' 'it87-frankcrawford-dkms-git')
+backup=('etc/modprobe.d/it87-avcc3.conf')
+source=("$_pkgbase::git+https://github.com/frankcrawford/it87.git"
+        "dkms.conf"
+        "it87.conf"
+        "it87-avcc3.modprobe.conf"
+        "0001-force-avcc3.patch")
+sha256sums=('SKIP'
+            '82bf96ce547768a84807f611eb103d943ce80e4c57d24590123e721b7bced793'
+            'acdc488d1505e891ed6259b29428d4b27d26d18e3ea170f017b930390d6420e7'
+            'SKIP'
+            'SKIP')
+
+pkgver() {
+  cd "$srcdir/$_pkgbase"
+  printf "%s.%s" "$(git rev-list --count HEAD)" "$(git rev-parse --short HEAD)"
+}
+
+prepare() {
+  cd "$srcdir/$_pkgbase"
+  patch -Np1 -i "$srcdir/0001-force-avcc3.patch"
+}
+
+package() {
+  cd "$srcdir/$_pkgbase"
+  install -d "$pkgdir/usr/src/$_pkgbase-$pkgver/"
+  cp -r "$srcdir/$_pkgbase"/* "$pkgdir/usr/src/$_pkgbase-$pkgver/"
+  install -Dm644 "$srcdir/dkms.conf" "$pkgdir/usr/src/$_pkgbase-$pkgver/dkms.conf"
+  sed -e "s/@_PKGBASE@/$_pkgbase/" -e "s/@PKGVER@/$pkgver/" -i "$pkgdir/usr/src/$_pkgbase-$pkgver/dkms.conf"
+  install -Dm644 "$srcdir/it87.conf" "$pkgdir/usr/lib/depmod.d/it87.conf"
+  install -Dm644 "$srcdir/it87-avcc3.modprobe.conf" "$pkgdir/etc/modprobe.d/it87-avcc3.conf"
+}

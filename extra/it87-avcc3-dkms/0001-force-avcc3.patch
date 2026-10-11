@@ -1,0 +1,27 @@
+--- a/it87.c
++++ b/it87.c
+@@ -327,6 +327,15 @@
+ /* Not all BIOSes properly configure the PWM registers */
+ static bool fix_pwm_polarity;
+ 
++/*
++ * Some boards (e.g. Gigabyte B550/X570 with IT8688E) leave the PINX2 "AVCC3
++ * enable" bit clear although the in9/AVCC3 ADC channel reads correctly, so
++ * the driver hides it. This only shows the existing reading; nothing is written.
++ */
++static bool force_avcc3;
++module_param(force_avcc3, bool, 0444);
++MODULE_PARM_DESC(force_avcc3, "Show in9 (AVCC3) even if the PINX2 enable bit is clear");
++
+ /* Many IT87 constants specified below */
+ 
+ /* Length of ISA address segment */
+@@ -6110,7 +6119,7 @@
+ 			    sio_data->type != it8688 &&
+ 			    sio_data->type != it8689)
+ 				sio_data->internal |= BIT(0);
+-		} else {
++		} else if (!force_avcc3) {
+ 			sio_data->internal &= ~BIT(3);
+ 			sio_data->skip_in |= BIT(9);
+ 		}
