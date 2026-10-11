@@ -175,6 +175,7 @@ pub fn run(interval: Duration) {
     let mut last_smart: Option<Instant> = None;
     let mut msr = crate::privsrc::Msr::new();
     let mut cpumsr = crate::cpumsr::CpuMsr::new();
+    let mut gpushared = crate::privsrc::GpuShared::new();
     loop {
         // SMART data changes slowly; poll it once a minute.
         if last_smart.is_none_or(|t| t.elapsed() > Duration::from_secs(60)) {
@@ -188,7 +189,7 @@ pub fn run(interval: Duration) {
             last_smart = Some(Instant::now());
         }
         let mut groups = smart_cache.clone();
-        groups.extend(crate::privsrc::sample(&mut msr));
+        groups.extend(crate::privsrc::sample(&mut msr, &mut gpushared));
         groups.extend(cpumsr.sample());
         if let Err(e) = write_atomic(&groups) {
             eprintln!("hwinfo-rs helper: {e}");

@@ -101,6 +101,53 @@ impl Msr {
     }
 }
 
-pub fn sample(msr: &mut Msr) -> Vec<Group> {
-    it8915().into_iter().chain(msr.sample()).collect()
+/// WDDM "D3D Memory Dynamic" counterpart: system RAM that GPU clients have mapped
+/// through the NVIDIA device files (pinned/shared host allocations), summed over
+/// every process holding a /dev/nvidia* handle. Root sees all processes.
+pub struct GpuShared {
+    cache: Option<(std::time::Instant, f64)>,
+}
+
+impl GpuShared {
+    pub fn new() -> Self {
+        GpuShared { cache: None }
+    }
+
+    fn sample(&mut self) -> Option<Group> {
+        if !std::path::Path::new("/dev/nvidiactl").exists() {
+            return None;
+        }
+        if self.cache.is_none_or(|(t, _)| t.elapsed() > std::time::Duration::from_secs(10)) {
+            let mut kb = 0u64;
+            for e in std::fs::read_dir("/proc").ok()?.flatten() {
+                let pid = e.file_name();
+                if !pid.to_string_lossy().bytes().all(|b| b.is_ascii_digit()) {
+                    continue;
+                }
+                let has = std::fs::read_dir(e.path().join("fd")).ok().is_some_and(|fds| {
+                    fds.flatten().any(|f| std::fs::read_link(f.path()).ok().is_some_and(|t| t.to_string_lossy().starts_with("/dev/nvidia")))
+                });
+                if !has {
+                    continue;
+                }
+                let Ok(smaps) = std::fs::read_to_string(e.path().join("smaps")) else { continue };
+                let mut dev = false;
+                for l in smaps.lines() {
+                    let first = l.split_whitespace().next().unwrap_or("");
+                    if first.contains('-') && first.bytes().all(|b| b.is_ascii_hexdigit() || b == b'-') {
+                        dev = l.split_whitespace().nth(5).is_some_and(|p| p.starts_with("/dev/nvidia"));
+                    } else if dev && first == "Rss:" {
+                        kb += l.split_whitespace().nth(1).and_then(|v| v.parse::<u64>().ok()).unwrap_or(0);
+                    }
+                }
+            }
+            self.cache = Some((std::time::Instant::now(), kb as f64 / 1024.0));
+        }
+        let mb = self.cache.map(|c| c.1);
+        Some(Group { title: "GPU [#0]: d3d".into(), items: vec![Item::new("GPU D3D Memory Dynamic", Kind::Memory, 0, mb)] })
+    }
+}
+
+pub fn sample(msr: &mut Msr, shared: &mut GpuShared) -> Vec<Group> {
+    it8915().into_iter().chain(msr.sample()).chain(shared.sample()).collect()
 }

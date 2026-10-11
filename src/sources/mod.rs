@@ -256,7 +256,16 @@ impl Collector {
             // Helper's GPU-board chips follow their GPU, titled like HWiNFO.
             let tag = format!("GPU [#{i}]: ");
             let mut extra = Vec::new();
+            let mut items = items;
             privileged.retain(|g| match g.title.strip_prefix(&tag) {
+                // Rows that belong inside the GPU group itself (D3D memory dynamic).
+                Some("d3d") => {
+                    let at = items.iter().position(|i| i.name == "GPU D3D Memory Dedicated").map(|p| p + 1).unwrap_or(items.len());
+                    for (n, it) in g.items.iter().enumerate() {
+                        items.insert(at + n, it.clone());
+                    }
+                    false
+                }
                 Some(chip) => {
                     extra.push(Group { title: format!("{title}: {chip}"), items: g.items.clone() });
                     false

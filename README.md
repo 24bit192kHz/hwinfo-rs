@@ -37,6 +37,7 @@ by reverse-engineering HWiNFO64 itself; see [`analysis/RE-REPORT.md`](analysis/R
 | NVIDIA | NVML + private NVAPI (`libnvidia-api.so.1`) | hot spot, core voltage, every power rail (W/V/A), % of TDP, perf limiters, effective/crossbar clock, PCIe errors per lane, per-process VRAM/load |
 | NVIDIA Ampere/Ada | `nvvram` module | GDDR6/6X memory junction temperature |
 | AMD / Intel GPUs | amdgpu / i915 / xe sysfs + hwmon | clocks, load, VRAM, temps, power |
+| WDDM-style GPU rows | NVML + root helper | "D3D Usages" = per-engine busy (3D, encode, decode, JPEG, OFA); "D3D Memory Dedicated" = VRAM of GPU clients; "D3D Memory Dynamic" = system RAM clients mapped through /dev/nvidia*; "VR Usage" = GPU load of a running VR compositor (SteamVR, Monado, WiVRn, ALVR) |
 | Drives | hwmon + root helper (smartctl) | temps, remaining life, spare, host/NAND writes, CRC errors |
 | Laptops | power_supply | charge, wear level, rate, cycles |
 | DDR4/DDR5 DIMMs | jc42 / spd5118 | needs an SMBus driver for your board |

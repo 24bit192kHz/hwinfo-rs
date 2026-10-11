@@ -62,6 +62,16 @@ fn lane_errors(d: &nvml_wrapper::Device, lanes: u32) -> Vec<Option<f64>> {
     vals.iter().map(|v| (v.nvml_return == 0).then_some(v.value as u32 as f64)).collect()
 }
 
+/// nvmlDeviceGet{Jpg,Ofa}Utilization (not wrapped by nvml-wrapper); None if unsupported.
+fn engine_util(d: &nvml_wrapper::Device, sym: &str) -> Option<f64> {
+    type F = unsafe extern "C" fn(*mut std::ffi::c_void, *mut u32, *mut u32) -> u32;
+    static LIB: std::sync::OnceLock<Option<libloading::Library>> = std::sync::OnceLock::new();
+    let lib = LIB.get_or_init(|| unsafe { libloading::Library::new("libnvidia-ml.so.1").ok() }).as_ref()?;
+    let f = unsafe { lib.get::<F>(sym.as_bytes()) }.ok()?;
+    let (mut u, mut period) = (0u32, 0u32);
+    (unsafe { f(d.handle() as *mut _, &mut u, &mut period) } == 0).then_some(u as f64)
+}
+
 pub struct Gpu {
     nvml: Option<Nvml>,
     nvapi: Option<crate::sources::nvapi::NvApi>,
@@ -243,8 +253,6 @@ impl Gpu {
                 let at = v.iter().position(|i| i.name == "GPU Thermal Limit").unwrap_or(0);
                 v.insert(at, Item::new("GPU Hot Spot Temperature", Kind::Temp, 1, hotspot));
             }
-            out.push((format!("GPU [#{idx}]: {name}"), v));
-
             // Per-process VRAM and engine load (nvtop-style), heaviest first.
             let mut procs: HashMap<u32, (u64, Option<(u32, u32, u32)>)> = HashMap::new();
             for p in d.running_graphics_processes().unwrap_or_default().into_iter().chain(d.running_compute_processes().unwrap_or_default()) {
@@ -282,6 +290,37 @@ impl Gpu {
                     it
                 })
                 .collect();
+            // Windows WDDM rows, from their Linux counterparts:
+            //   D3D Usages  = per-engine busy % (3D/graphics, encode, decode, JPEG, OFA)
+            //   D3D Memory Dedicated = VRAM committed by GPU client processes
+            //   D3D Memory Dynamic   = system RAM mapped by clients (root helper, merged later)
+            //   VR Usage    = GPU load of a running VR compositor (0 when none)
+            let gfx = util.as_ref().map(|u| u.gpu as f64);
+            let mut engines = vec![Item::new("3D", Kind::Usage, 1, gfx)];
+            engines.push(Item::new("Video Encode", Kind::Usage, 1, enc));
+            engines.push(Item::new("Video Decode", Kind::Usage, 1, dec));
+            for (n, sym) in [("JPEG", "nvmlDeviceGetJpgUtilization"), ("Optical Flow", "nvmlDeviceGetOfaUtilization")] {
+                if let Some(u) = engine_util(&d, sym) {
+                    engines.push(Item::new(n, Kind::Usage, 1, Some(u)));
+                }
+            }
+            let mut usages = Item::new("GPU D3D Usages", Kind::Usage, 1, engines.iter().filter_map(|e| e.value).reduce(f64::max));
+            usages.children = engines;
+            let at = v.iter().position(|i| i.name == "GPU Video Engine Load").unwrap_or(v.len());
+            v.insert(at, usages);
+            v.insert(at, Item::new("GPU D3D Usage", Kind::Usage, 1, gfx));
+            let dedicated: u64 = rows.iter().map(|r| r.1).sum();
+            let at = v.iter().position(|i| i.name == "GPU Memory Available").map(|p| p + 1).unwrap_or(v.len());
+            v.insert(at, Item::new("GPU D3D Memory Dedicated", Kind::Memory, 0, Some(dedicated as f64 / 1048576.0)));
+            const VR: [&str; 7] = ["vrcompositor", "vrcompositor-launcher", "vrserver", "monado-service", "wivrn-server", "alvr_dashboard", "envision"];
+            let vr: u32 = rows
+                .iter()
+                .filter(|r| crate::sources::hwmon::read_trim(format!("/proc/{}/comm", r.0)).is_some_and(|c| VR.iter().any(|v| c.starts_with(v))))
+                .filter_map(|r| r.2.map(|u| u.0))
+                .sum();
+            v.push(Item::new("GPU VR Usage", Kind::Usage, 1, Some(vr.min(100) as f64)));
+
+            out.push((format!("GPU [#{idx}]: {name}"), v));
             if !items.is_empty() {
                 out.push((format!("GPU [#{idx}]: Processes"), items));
             }
