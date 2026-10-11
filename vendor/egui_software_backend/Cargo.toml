@@ -1,0 +1,23 @@
+# Vendored from egui_software_backend 0.0.3 (MIT OR Apache-2.0,
+# https://github.com/DGriffin91/egui_software_backend), ported to egui 0.36.
+# Only the rasterizer is used; hwinfo-rs drives winit + softbuffer itself.
+[package]
+name = "egui_software_backend"
+version = "0.0.3"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+
+[features]
+default = ["std"]
+std = []
+raster_stats = ["std"]
+# Upstream features whose code was removed or is unused here (kept so cfgs stay known).
+log = []
+rayon = []
+winit = []
+test_render = []
+
+[dependencies]
+egui = { version = "0.36", default-features = false }
+strength_reduce = "0.2.4"
+constify = "0.0.1"

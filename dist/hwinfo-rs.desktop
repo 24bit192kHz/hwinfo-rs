@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=HWiNFO-rs
+GenericName=Sensor Monitor
+Comment=HWiNFO-style hardware sensor monitor
+Exec=hwinfo-rs
+Icon=utilities-system-monitor
+Terminal=false
+Categories=System;Monitor;
+StartupWMClass=hwinfo-rs

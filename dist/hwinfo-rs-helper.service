@@ -1,0 +1,19 @@
+[Unit]
+Description=hwinfo-rs privileged sensor helper (S.M.A.R.T., MSRs, GPU board I2C)
+After=systemd-modules-load.service
+
+[Service]
+ExecStart=/usr/bin/hwinfo-rs --helper -i 2000
+Restart=on-failure
+RestartSec=10
+RuntimeDirectory=hwinfo-rs
+RuntimeDirectoryMode=0755
+NoNewPrivileges=yes
+ProtectHome=yes
+PrivateTmp=yes
+ProtectSystem=full
+CapabilityBoundingSet=CAP_SYS_RAWIO CAP_SYS_ADMIN CAP_DAC_OVERRIDE CAP_SYS_MODULE
+Nice=10
+
+[Install]
+WantedBy=multi-user.target

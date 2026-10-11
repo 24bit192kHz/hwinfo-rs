@@ -1,0 +1,4 @@
+# DDR4 DIMM thermal sensors (jc42) whose firmware left the limits at 0 °C report
+# permanent false alarms; give them the JEDEC DDR4 normal/extended limits.
+# Limits set by the firmware are left alone.
+ACTION=="add", SUBSYSTEM=="hwmon", ATTR{name}=="jc42", ATTR{temp1_crit}=="0", ATTR{temp1_crit}="95000", ATTR{temp1_max}="85000"

@@ -1,0 +1,25 @@
+[package]
+name = "hwinfo-rs"
+description = "HWiNFO64-style hardware sensor monitor for Linux (GUI, CLI, Waybar)"
+license = "GPL-3.0-or-later"
+repository = "https://github.com/24bit192kHz/hwinfo-rs"
+readme = "README.md"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+bytemuck = "1.25.2"
+egui = { version = "0.36", default-features = false, features = ["default_fonts"] }
+egui-winit = { version = "0.36", default-features = false, features = ["wayland", "x11", "clipboard"] }
+egui_software_backend = { version = "0.0.3", path = "vendor/egui_software_backend" }
+libloading = "0.9.0"
+nvml-wrapper = "0.13.0"
+serde_json = "1.0.154"
+softbuffer = { version = "0.4", default-features = false, features = ["wayland", "x11"] }
+winit = { version = "0.30", default-features = false, features = ["wayland", "x11", "rwh_06"] }
+
+[profile.release]
+lto = "fat"
+codegen-units = 1
+strip = true
+panic = "abort"
